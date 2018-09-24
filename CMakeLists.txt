@@ -5,6 +5,7 @@ project(libogg)
 include(GNUInstallDirs)
 include(CheckIncludeFiles)
 include(CMakePackageConfigHelpers)
+include(CTest)
 
 # Build options
 option(BUILD_SHARED_LIBS "Build shared library" OFF)
@@ -130,3 +131,21 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg-config-version.cmake
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+
+if(BUILD_TESTING)
+    add_executable(test_bitwise src/bitwise.c ${OGG_HEADERS})
+    target_compile_definitions(test_bitwise PRIVATE _V_SELFTEST)
+    target_include_directories(test_bitwise PRIVATE
+        include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
+    add_test(NAME test_bitwise COMMAND $<TARGET_FILE:test_bitwise>)
+
+    add_executable(test_framing src/framing.c ${OGG_HEADERS})
+    target_compile_definitions(test_framing PRIVATE _V_SELFTEST)
+    target_include_directories(test_framing PRIVATE
+        include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
+    add_test(NAME test_framing COMMAND $<TARGET_FILE:test_framing>)
+endif()
