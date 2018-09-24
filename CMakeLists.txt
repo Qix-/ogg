@@ -132,6 +132,24 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg-config-version.cmake
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+set(OGG_DOCS
+    doc/framing.html
+    doc/index.html
+    doc/oggstream.html
+    doc/ogg-multiplex.html
+    doc/fish_xiph_org.png
+    doc/multiplex1.png
+    doc/packets.png
+    doc/pages.png
+    doc/stream.png
+    doc/vorbisword2.png
+    doc/white-ogg.png
+    doc/white-xifish.png
+    doc/rfc3533.txt
+    doc/rfc5334.txt
+    doc/skeleton.html
+)
+install(FILES ${OGG_DOCS} DESTINATION ${CMAKE_INSTALL_DOCDIR}/html/libogg)
 
 if(BUILD_TESTING)
     add_executable(test_bitwise src/bitwise.c ${OGG_HEADERS})
