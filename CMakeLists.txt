@@ -70,6 +70,7 @@ set(OGG_HEADERS
 set(OGG_SOURCES
     src/bitwise.c
     src/framing.c
+    src/crctable.h
 )
 
 if(MSVC)
