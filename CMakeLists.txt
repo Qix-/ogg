@@ -20,21 +20,19 @@ set(PROJECT_VERSION_MINOR ${CMAKE_MATCH_2})
 set(PROJECT_VERSION_PATCH ${CMAKE_MATCH_3})
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
-# Helper function to get version-info
-function(get_version_info result current_var_name age_var_name revision_var_name)
-    string(REGEX MATCH "${current_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_CURRENT ${CMAKE_MATCH_1})
+# Extract library version from configure.ac
+string(REGEX MATCH "LIB_CURRENT=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_CURRENT ${CMAKE_MATCH_1})
 
-    string(REGEX MATCH "${age_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_AGE ${CMAKE_MATCH_1})
+string(REGEX MATCH "LIB_AGE=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_AGE ${CMAKE_MATCH_1})
 
-    string(REGEX MATCH "${revision_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_REVISION ${CMAKE_MATCH_1})
+string(REGEX MATCH "LIB_REVISION=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_REVISION ${CMAKE_MATCH_1})
 
-    math(EXPR VERSION_INFO_CURRENT_MINUS_AGE "${VERSION_INFO_CURRENT} - ${VERSION_INFO_AGE}")
+math(EXPR LIB_SOVERSION "${LIB_CURRENT} - ${LIB_AGE}")
+set(LIB_VERSION "${LIB_SOVERSION}.${LIB_AGE}.${LIB_REVISION}")
 
-    set(${result} "${VERSION_INFO_CURRENT_MINUS_AGE}.${VERSION_INFO_AGE}.${VERSION_INFO_REVISION}" PARENT_SCOPE)
-endfunction()
 
 # Helper function to configure pkg-config files
 function(configure_pkg_config_file pkg_config_file_in)
@@ -88,10 +86,10 @@ target_include_directories(ogg PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-get_version_info(OGG_VERSION_INFO "LIB_CURRENT" "LIB_AGE" "LIB_REVISION")
 set_target_properties(
     ogg PROPERTIES
-    SOVERSION ${OGG_VERSION_INFO}
+    SOVERSION ${LIB_SOVERSION}
+    VERSION ${LIB_VERSION}
     PUBLIC_HEADER "${OGG_HEADERS}"
 )
 
