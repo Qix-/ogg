@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
-project(libogg)
+project(Ogg)
 
 # Required modules
 include(GNUInstallDirs)
@@ -117,17 +117,29 @@ install(TARGETS ogg
     FRAMEWORK DESTINATION ${CMAKE_INSTALL_PREFIX}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ogg
 )
+
+set(CMAKE_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Ogg)
 install(EXPORT ogg-targets
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake
+    DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
     NAMESPACE Ogg::
-    FILE ogg-config.cmake
+    FILE ogg-targets.cmake
+)
+set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR})
+configure_package_config_file(
+    ogg-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ogg-config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
+    PATH_VARS INCLUDE_INSTALL_DIR
 )
 write_basic_package_version_file(ogg-config-version.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg-config-version.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/ogg-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/ogg-config-version.cmake
+    DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
