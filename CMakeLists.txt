@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 2.8.7)
-project(libogg)
+cmake_minimum_required(VERSION 2.8.12)
+project(Ogg)
 
 # Required modules
 include(GNUInstallDirs)
 include(CheckIncludeFiles)
+include(CMakePackageConfigHelpers)
+include(CTest)
 
 # Build options
 option(BUILD_SHARED_LIBS "Build shared library" OFF)
@@ -19,21 +21,19 @@ set(PROJECT_VERSION_MINOR ${CMAKE_MATCH_2})
 set(PROJECT_VERSION_PATCH ${CMAKE_MATCH_3})
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
-# Helper function to get version-info
-function(get_version_info result current_var_name age_var_name revision_var_name)
-    string(REGEX MATCH "${current_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_CURRENT ${CMAKE_MATCH_1})
+# Extract library version from configure.ac
+string(REGEX MATCH "LIB_CURRENT=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_CURRENT ${CMAKE_MATCH_1})
 
-    string(REGEX MATCH "${age_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_AGE ${CMAKE_MATCH_1})
+string(REGEX MATCH "LIB_AGE=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_AGE ${CMAKE_MATCH_1})
 
-    string(REGEX MATCH "${revision_var_name}=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
-    set(VERSION_INFO_REVISION ${CMAKE_MATCH_1})
+string(REGEX MATCH "LIB_REVISION=([0-9]*)" DUMMY ${CONFIGURE_AC_CONTENTS})
+set(LIB_REVISION ${CMAKE_MATCH_1})
 
-    math(EXPR VERSION_INFO_CURRENT_MINUS_AGE "${VERSION_INFO_CURRENT} - ${VERSION_INFO_AGE}")
+math(EXPR LIB_SOVERSION "${LIB_CURRENT} - ${LIB_AGE}")
+set(LIB_VERSION "${LIB_SOVERSION}.${LIB_AGE}.${LIB_REVISION}")
 
-    set(${result} "${VERSION_INFO_CURRENT_MINUS_AGE}.${VERSION_INFO_AGE}.${VERSION_INFO_REVISION}" PARENT_SCOPE)
-endfunction()
 
 # Helper function to configure pkg-config files
 function(configure_pkg_config_file pkg_config_file_in)
@@ -70,6 +70,7 @@ set(OGG_HEADERS
 set(OGG_SOURCES
     src/bitwise.c
     src/framing.c
+    src/crctable.h
 )
 
 if(MSVC)
@@ -81,12 +82,16 @@ if(BUILD_FRAMEWORK)
 endif()
 
 add_library(ogg ${OGG_HEADERS} ${OGG_SOURCES})
-target_include_directories(ogg PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_include_directories(ogg PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
-get_version_info(OGG_VERSION_INFO "LIB_CURRENT" "LIB_AGE" "LIB_REVISION")
 set_target_properties(
     ogg PROPERTIES
-    SOVERSION ${OGG_VERSION_INFO}
+    SOVERSION ${LIB_SOVERSION}
+    VERSION ${LIB_VERSION}
     PUBLIC_HEADER "${OGG_HEADERS}"
 )
 
@@ -105,12 +110,76 @@ endif()
 configure_pkg_config_file(ogg.pc.in)
 
 install(TARGETS ogg
+    EXPORT ogg-targets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     FRAMEWORK DESTINATION ${CMAKE_INSTALL_PREFIX}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ogg
 )
+
+set(CMAKE_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Ogg)
+install(EXPORT ogg-targets
+    DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
+    NAMESPACE Ogg::
+    FILE ogg-targets.cmake
+)
+set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR})
+configure_package_config_file(
+    ogg-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ogg-config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
+    PATH_VARS INCLUDE_INSTALL_DIR
+)
+write_basic_package_version_file(ogg-config-version.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/ogg-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/ogg-config-version.cmake
+    DESTINATION ${CMAKE_INSTALL_CONFIGDIR}
+)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ogg.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+set(OGG_DOCS
+    doc/framing.html
+    doc/index.html
+    doc/oggstream.html
+    doc/ogg-multiplex.html
+    doc/fish_xiph_org.png
+    doc/multiplex1.png
+    doc/packets.png
+    doc/pages.png
+    doc/stream.png
+    doc/vorbisword2.png
+    doc/white-ogg.png
+    doc/white-xifish.png
+    doc/rfc3533.txt
+    doc/rfc5334.txt
+    doc/skeleton.html
+)
+install(FILES ${OGG_DOCS} DESTINATION ${CMAKE_INSTALL_DOCDIR}/html/libogg)
+
+if(BUILD_TESTING)
+    add_executable(test_bitwise src/bitwise.c ${OGG_HEADERS})
+    target_compile_definitions(test_bitwise PRIVATE _V_SELFTEST)
+    target_include_directories(test_bitwise PRIVATE
+        include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
+    add_test(NAME test_bitwise COMMAND $<TARGET_FILE:test_bitwise>)
+
+    add_executable(test_framing src/framing.c ${OGG_HEADERS})
+    target_compile_definitions(test_framing PRIVATE _V_SELFTEST)
+    target_include_directories(test_framing PRIVATE
+        include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
+    add_test(NAME test_framing COMMAND $<TARGET_FILE:test_framing>)
+endif()
+
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+include(CPack)
